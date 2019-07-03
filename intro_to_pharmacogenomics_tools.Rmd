@@ -226,10 +226,22 @@ head(sensitivityProfiles(CCLE))
 
 ### Summary Functions
 
+Pharmacogenomics studies often contain many examples of either replicated or missing data.
+One of the most common tasks in preparing data for statistical or machine learning analysis is 
+aligning your features and labels. To accelerate using Pharmacogenomics data for analysis, 
+*PharmacoGx* contains two functions which create deduplicated matrices with missing data filled
+by NAs: *summarizeSensitivityProfiles* and *summarizeMolecularProfiles*. They create matrices
+which are drugs x cell lines and molecular features x cell lines, with any cell lines profiled
+for only sensitivity or molecular features padded with NA values.
+
+```{r summary}
+dim(summarizeMolecularProfiles(CCLE, "rna"))
+dim(summarizeSensitivityProfiles(CCLE))
+```
 
 
-### Pharmacological profiles
-In pharmacogenomic studies, cancer cell lines were also tested for their response to increasing concentrations of various compounds, and form this the IC50 and AAC were computed. These pharmacological profiles are available for all the PSets in *PharmacoGx*.
+Below, we use the summarizeMolecularProfiles function and ggplot to investigate the distributions of 
+AUC values within CCLE.
 
 ```{r ccleauc, fig.cap="Cells response to drugs in CCLE"}
 library(ggplot2, verbose=FALSE)
