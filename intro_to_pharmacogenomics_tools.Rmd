@@ -141,28 +141,27 @@ print(common)
 
 ## PharmacoGx Functionality
 
-In addition to defining the PSet data structure, PharmacoGx implements some basic preprocessing, plotting and analysis functions,
-designed to help the user create objects for use in biomarker discovery or machine learning tasks.
+In addition to defining the PSet data structure, PharmacoGx implements some
+basic preprocessing, plotting and analysis functions, designed to help the user
+create objects for use in biomarker discovery or machine learning tasks.
 
 ![](figures/analysis_tasks.png)
 
 ### Fitting Drug Dose Response Curves
 
-One of the core tasks implemented in PharmacoGx is the fitting of Hill Curve Models to dose-response data. In PharmacoGx, we use the 
-3 Parameter Hill Slope function as our model of drug response in cancer cell lines:
- 
+One of the core tasks implemented in PharmacoGx is the fitting of Hill Curve
+Models to dose-response data. In PharmacoGx, we use the 3 Parameter Hill Slope
+function as our model of drug response in cancer cell lines:
 ![](figures/hillslope.png)
-
-
-To fit a Hill Slope model to you data, you can use the *logLogisticRegression* function, as below:
+To fit a Hill Slope model to you data, you can use the *logLogisticRegression*
+function, as below:
 
 ```{r loglogistic}
-
 
 concentrations <- 1/2^seq(0,8) * 1
 viabilities <-  c(0, 33.3, 60, 77.8, 88.2, 93.9, 96.9, 98.4, 99.2)
 
-pars <- logLogisticRegression(conc = conentrations, viability = viabilities)
+pars <- logLogisticRegression(conc = concentrations, viability = viabilities)
 print(pars)
 ```
 
@@ -170,7 +169,11 @@ print(pars)
 
 ### Plotting Drug Dose Response Data
 
-Drug-Dose response data included in the PharmacoSet objects can be conviniently plotted using the *drugDoseResponseCurve* function. Given a list of PharmacoSets, a drug name and a cell name, it will plot the drug dose response curves for the given cell-drug combination in each dataset, allowing direct comparisons of data between datasets. 
+Drug-Dose response data included in the PharmacoSet objects can be conviniently
+plotted using the *drugDoseResponseCurve* function. Given a list of
+PharmacoSets, a drug name and a cell name, it will plot the drug dose response
+curves for the given cell-drug combination in each dataset, allowing direct
+comparisons of data between datasets.
 
 ```{r curves}
 cells <- c("OCI-AML2","A253","NCI-H1648")
@@ -207,7 +210,7 @@ convenient metrics for quuantifying the observed drug sensitivity. If you notice
 the *drugDoseResponseCurve* function computes them by default. In PharmacoGx, they can be 
 computed manually as follows:
 
-```{r ddrc_own}
+```{r sens_own}
 
 concentrations <- rev(1/2^seq(0,8) * 1)
 viabilities <-  c(99.2, 98.4, 96.9, 93.9, 88.2, 77.8, 60, 33.3, 0)
@@ -217,7 +220,9 @@ print(computeIC50(concentration = concentrations, viability = viabilities))
 
 ```
 
-In *PharmacoGx*, we call these measures sensitivity measures. PSets come with these measures precomputed, and accessible using the *sensitivityProfiles* function:
+In *PharmacoGx*, we call these measures sensitivity measures. PSets come with
+these measures precomputed, and accessible using the *sensitivityProfiles*
+function:
 
 ```{r sensProf}
 head(sensitivityProfiles(CCLE))
@@ -226,13 +231,17 @@ head(sensitivityProfiles(CCLE))
 
 ### Summary Functions
 
-Pharmacogenomics studies often contain many examples of either replicated or missing data.
-One of the most common tasks in preparing data for statistical or machine learning analysis is 
-aligning your features and labels. To accelerate using Pharmacogenomics data for analysis, 
-*PharmacoGx* contains two functions which create deduplicated matrices with missing data filled
-by NAs: *summarizeSensitivityProfiles* and *summarizeMolecularProfiles*. They create matrices
-which are drugs x cell lines and molecular features x cell lines, with any cell lines profiled
-for only sensitivity or molecular features padded with NA values.
+Pharmacogenomics studies often contain many examples of either replicated or
+missing data. One of the most common tasks in preparing data for statistical or
+machine learning analysis is aligning your features and labels. To accelerate
+using Pharmacogenomics data for analysis, *PharmacoGx* contains two functions
+which create deduplicated matrices with missing data filled by NAs:
+*summarizeSensitivityProfiles* and *summarizeMolecularProfiles*. They create
+matrices which are drugs x cell lines and molecular features x cell lines, with
+any cell lines profiled for only sensitivity or molecular features padded with
+NA values. For the molecular profiles, the data is returned in a `r
+BiocStyle::Biocpkg("Biobase")` *ExpressionSet* object, while drug sensitivity
+data is returned as a matrix.
 
 ```{r summary}
 dim(summarizeMolecularProfiles(CCLE, "rna"))
@@ -259,14 +268,60 @@ print(p)
 ```
 
 ## Replication 
-In this section we will investigate the consistency between the GDSC and CCLE datasets. In both CCLE and GDSC, the transcriptome of cells was profiled using an Affymatrix microarray chip. Cells were also tested for their response to increasing concentrations of various compounds, and form this the IC50 and AUC were computed. However, the cell and drugs names used between the two datasets were not consistent. Furthermore, two different microarray platforms were used. However, *PharmacoGx* allows us to overcome these differences to do a comparative study between these two datasets. 
+In this section we will investigate the consistency between the GDSC and CCLE
+datasets. In both CCLE and GDSC, the transcriptome of cells was profiled using
+an Affymatrix microarray chip. Cells were also tested for their response to
+increasing concentrations of various compounds, and form this the IC50 and AUC
+were computed. However, the cell and drugs names used between the two datasets
+were not consistent. Furthermore, two different microarray platforms were used.
+However, *PharmacoGx* allows us to overcome these differences to do a
+comparative study between these two datasets.
+GDSC was profiled using the hgu133a platform, while CCLE was profiled with the
+expanded hgu133plus2 platform. While in this case the hgu133a is almost a strict
+subset of hgu133plus2 platform, the expression information in *PharmacoSet*
+objects is summarized by Ensemble Gene Ids, allowing datasets with different
+platforms to be directly compared. The probe to gene mapping is done using the
+BrainArray customCDF for each platform \cite{sabatti_thresholding_2002}.
+To begin, you would load the datasets from disk or download them using the
+*downloadPSet* function above.
+We want to investigate the consistency of the data between the two datasets. The
+common intersection between the datasets can then be found using
+*intersectPSet*. We create a summary of the gene expression and drug sensitivity
+measures for both datasets, so we are left with one gene expression profile and
+one sensitivity profile per cell line within each dataset. We can then compare
+the gene expression and sensitivity measures between the datasets using a
+standard correlation coefficient.
 
-GDSC was profiled using the hgu133a platform, while CCLE was profiled with the expanded hgu133plus2 platform. While in this case the hgu133a is almost a strict subset of hgu133plus2 platform, the expression information in *PharmacoSet* objects is summarized by Ensemble Gene Ids, allowing datasets with different platforms to be directly compared. The probe to gene mapping is done using the BrainArray customCDF for each platform \cite{sabatti_thresholding_2002}.
+### Consistency of mRNA expression
+First we look at the consistency of gene expression profiles across the two datasets. 
+We use the same intersected PSets as above, and calculate Pearson correlations between
+the expression of common cell lines. 
 
-To begin, you would load the datasets from disk or download them using the *downloadPSet* function above.
 
-We want to investigate the consistency of the data between the two datasets. The common intersection between the datasets can then be found using *intersectPSet*. We create a summary of the gene expression and drug sensitivity measures for both datasets, so we are left with one gene expression profile and one sensitivity profile per cell line within each dataset. We can then compare the gene expression and sensitivity measures between the datasets using a standard correlation coefficient. 
+```{r rnacons}
+common <- intersectPSet(pSets = list("CCLE"=CCLE, "GDSC"=GDSC), 
+                        intersectOn = c("cell.lines", "drugs"), 
+                        strictIntersect = TRUE)
 
+common.features <- intersect(rownames(featureInfo(common$GDSC, "rna")),
+                             rownames(featureInfo(common$CCLE, "rna")))
+
+GDSC.rna <- summarizeMolecularProfiles(common$GDSC, "rna", 
+                                       features = common.features)
+CCLE.rna <- summarizeMolecularProfiles(common$CCLE, "rna",
+                                       features = common.features)
+
+cors.gexp <- cor(exprs(GDSC.rna), exprs(CCLE.rna), use="pairwise.complete")
+hist(diag(cors.gexp), main="Correlations of gene expression between same cell lines", xlim=c(-1,1))
+boxplot(list(Same=diag(cors.gexp), Different = cors.gexp[upper.tri(cors.gexp)]), col=rainbow(5), main="Comparison of gene expression profiles")
+```
+
+### Consistency of pharmacological profiles
+
+
+Before running the correlation analysis, let us examine some examples of drug
+sensitivity curves which are discordant and concordant across the two datasets,
+using the functions described above.
 ```{r Replicationcurves, fig.cap="Consistency of drug response curves across studies", results='hide'}
 common <- intersectPSet(pSets = list("CCLE"=CCLE, "GDSC"=GDSC), 
                         intersectOn = c("cell.lines", "drugs"), 
@@ -289,63 +344,152 @@ for (i in seq_len(nrow(cases))) {
 }
 ```
 
-### Consistency of pharmacological profiles
-```{r sensitivityscatterplots, fig.height=5, fig.width=10, fig.cap="Concordance of AAC values", eval=FALSE}
-  
-##AAC scatter plot 
-GDSC.aac <- summarizeSensitivityProfiles(
-    pSet=common$GDSC,
-    sensitivity.measure='auc_recomputed', 
-    summary.stat="median",
-    verbose=FALSE)
-CCLE.aac <- summarizeSensitivityProfiles(
-  pSet=common$CCLE,
-  sensitivity.measure='auc_recomputed', 
-  summary.stat="median",
-  verbose=FALSE)
-GDSC.ic50 <- summarizeSensitivityProfiles(
-    pSet=common$GDSC, 
-    sensitivity.measure='ic50_recomputed', 
-    summary.stat="median",
-    verbose=FALSE)
-CCLE.ic50 <- summarizeSensitivityProfiles(
-  pSet=common$CCLE, 
-  sensitivity.measure='ic50_recomputed', 
-  summary.stat="median",
-  verbose=FALSE)
-drug <- "lapatinib"
-#par(mfrow=c(1, 2))
-myScatterPlot(x=GDSC.aac[drug,], 
-              y=CCLE.aac[drug,], 
-              method=c("transparent"), 
-              transparency=0.8, pch=16, minp=50, 
-              xlim=c(0, max(max(GDSC.aac[drug,], na.rm=T), max(CCLE.aac[drug,], na.rm=T))), 
-              ylim=c(0, max(max(GDSC.aac[drug,], na.rm=T), max(CCLE.aac[drug,], na.rm=T))), 
-              main="cells response to lapatinib", 
-              cex.sub=0.7, 
-              xlab="AAC in GDSC", 
-              ylab="AAC in CCLE")
-legend("topright",
-         legend=sprintf("r=%s\nrs=%s\nCI=%s", 
-                 round(cor(GDSC.aac[drug,], 
-                           CCLE.aac[drug,], 
-                           method="pearson",
-                           use="pairwise.complete.obs"), 
-                       digits=2),
-                 round(cor(GDSC.aac[drug,], 
-                           CCLE.aac[drug,], 
-                           method="spearman",
-                           use="pairwise.complete.obs"), 
-                       digits=2),
-                 round(paired.concordance.index(GDSC.aac[drug,],
-                                                CCLE.aac[drug,],
-                                                delta.pred=0,
-                                                delta.obs=0)$cindex, 
-                       digits=2)), 
-         bty="n")
+
+As we can see, there is a range of concordance of drug response between these
+two datasets. To get a more global picture, we look at the correlations of cell
+line response between datasets.
+
+```{r consistency_pharmaco,  results='hide'}
+
+
+GDSC.auc <- summarizeSensitivityProfiles(common$GDSC)
+CCLE.auc <- summarizeSensitivityProfiles(common$CCLE)
+
+corssens <- cor(GDSC.auc, CCLE.auc, use="pairwise.complete")
+hist(diag(corssens), main="Correlations of drug sensitivity between same cell lines", breaks=50)
+boxplot(list(Same=diag(corssens), Different = corssens[upper.tri(corssens)]), col=rainbow(5), main="Comparison of drug sensitivity profiles")
+
 ```
+
+
+As we can see, the drug sensitivity data is less concordant between datasets
+than the gene expression. This presents a challenge for statistical and machine
+learning, as usually we use the drug response as our target/labels for our
+algorithms, assuming that they represent a ground truth. As the workshop goes
+on, we will introduce some suggested techniques to overcome this challenge.
+
+The first method introduces will be the Growth Rate correction techniques
+implemented in the GRmetrics package.
+
+# GRmetrics
+
+The GRmetrics implements the approach published by Hafner et al., to correct for 
+variability in drug sensitivity metrics caused by variations in growth rate of 
+the untreated cells. In this section, we will motivate the need for correcting 
+for growth rate, introduce the method from Hafner et al., and show an example
+of how the GRmetrics correct for growth rate discrepancies, using simulated data.
+
+## Need for GR Correction
+
+To demonstrate the need for Growth Rate correction, we will first note that it 
+is not trivial that differences in growth rate will lead to variability in our
+drug sensitivity summary metrics. 
+
+When we compute the viability for every drug concentration, we are normalizing 
+by the viability of an untreated control, which has been growing beside the 
+treated cells during the duration of the experiment. 
+
+A typical method for compute vialibility values would be as follows:
+
+![](figures/viabilitcalc.png)
+
+In this case, there is already some implicit normalization to the growth rate
+of the cell line, as the control well viability measurement will depend on 
+the growth rate. 
+
+We will now show that this is not enough, using some simulated drug response 
+data available in the GRmetrics R package. First, let us load the package.
+
+```{r loadGRmetrics}
+
+require(GRmetrics) || install("GRmetrics")
+
+library(GRmetrics)
+
+```
+
+We use a dataset called InputCaseA. In this dataset, all the data from across experiments is assembled 
+into an R tibble. The vignette *vignette("GRmetrics")* ahs more information about the input cases available in GRmetrics.
+
+```{r loadInputCaseA}
+data("inputCaseA")
+head(inputCaseA)
+```
+
+
+First, lets calculate the doubling times for each experiment. In this simulated dataset, the perturbation variable denotes a simulated 
+perturbation which modifies the growth rate of the cell lines - for example, a change in growth media. We calculate summary statistics (over replicates and different drugs) for all the doubling times for the cell lines:
+
+```{r doubletime}
+
+dbl.times <- by(inputCaseA, 
+                list(inputCaseA$cell_line, inputCaseA$perturbation), 
+                function(x){
+                  return(x$time/log2(x$cell_count__ctrl / x$cell_count__time0))
+                } )
+
+## Creating names for the boxplot:
+names(dbl.times) <- outer(rownames(dbl.times), paste(",\n Pert:",colnames(dbl.times)), paste0)
+
+boxplot(dbl.times, las=3, ylab="Doubling Time in Hours")
+```
+
+
+As we can see, the perturbation effect for BT20 is the strongest in this data. 
+Lets examine what the effect of this perturbation is on common summary metrics
+such as the IC50 and AUC. For sake of simplicity, we examine only drugA, at the 72
+hour timepoint:
+
+```{r GReffect}
+
+pert0 <- as.data.frame(subset(inputCaseA, time == 72 &perturbation == 0 & agent=="drugA" & cell_line=="BT20"))
+pert1 <- as.data.frame(subset(inputCaseA, time == 72 &perturbation == 1 & agent=="drugA" & cell_line=="BT20"))
+
+## We first calculate the viability relative to control for each measurement. Since 
+## we don't have background measurements, we omit that.
+pert0$viability <- pert0$cell_count/pert0$cell_count__ctrl
+pert1$viability <- pert1$cell_count/pert1$cell_count__ctrl
+
+drugDoseResponseCurve(concentrations = list("Pert 0" = pert0$concentration,
+                                            "Pert 1" = pert1$concentration), 
+                      viabilities = list("Pert 0" = pert0$viability,
+                                         "Pert 1" =  pert1$viability), 
+                      conc_as_log = FALSE, 
+                      viability_as_pct = FALSE, 
+                      plot.type="Fitted")
+
+
+```
+
+
+As we can see, the difference in doubling times affects both the AAC and the IC50 values.
+Observing this effect, Hafner et al. introduced a method to correct for such variability.
+
+## The GRmetrics Theory
+
+The idea behind the GR metrics is to correct the viability values by the rate of growth of the cell,
+and then proceed with the analysis as usual.
+
+
+
 
 
 # References 
 
-[1]: Smirnov et al. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
