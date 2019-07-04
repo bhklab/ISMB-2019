@@ -1,28 +1,201 @@
 ---
-title: "Untitled"
-output: pdf_document
+title: "Xeva Tutorial"
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+This hands-on activity focuses on analysis of patient-derived xenograft (PDX) based pharmacogenomic data. We will learn about PDX based drug screening and biomarker discovery. Using the R package `Xeva` we will visualise the PDX data. We will also perform univariate biomarker discovery in the PDX data.
+
+
+# Installation and Settings
+
+[Xeva](https://bioconductor.org/packages/3.9/bioc/html/Xeva.html) requires that several packages be installed. All dependencies are available from CRAN or Bioconductor:
+
+```{r getlib, results='hide', message=FALSE, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("Xeva")
+```
+Alternatively, the packgae can be installed for [Github](https://github.com/bhklab/Xeva):
+```{r gitHub, results='hide', message=FALSE, eval=FALSE}
+library(devtools)
+devtools::install_github("bhklab/Xeva")
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+Load Xeva into your current workspace:
+```{r l, results='hide', message=FALSE, eval=TRUE}
+library(Biobase)
+library(Xeva)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Data Access
+Now we load the dataset for the analysis. For the sake of this tutorial, here we load the Novartis PDXE \cite{gao2015high} breast cancer dataset as an example:
+```{r l2, results='hide', message=FALSE, eval=TRUE}
+data(brca)
+print(brca)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Xeva stores metadata for each individual PDX model.
+We can retrieve the meta-information about each PDX, such as number of models and tissue type, using:
+```{r l3}
+brca.mod <- modelInfo(brca)
+dim(brca.mod)
+brca.mod[1:4, ]
+```
+The output shows that the `brca` dataset contains `r nrow(brca.mod)` PDX models.
+We can also see the time vs. tumor volume data for a model using:
+
+```{r l4}
+model.data <- getExperiment(brca, model.id = "X.1004.BG98")
+head(model.data)
+```
+
+Similarly, for **batch** names, we can obtain all predefined batch names using:
+
+```{r batch1}
+batch.name <- batchInfo(brca)
+batch.name[1:4]
+```
+
+The information about a **batch** can be shown using:
+```{r batch2}
+batchInfo(brca, batch = "X-1004.binimetinib")
+```
+Here, for the batch named `X-1004.binimetinib`, we can see that the control sample is `X.1004.uned` and the treatment sample is `X.1004.biib`.
+
+
+
+
+
+
+# Visualizing PDX Growth Curve
+
+Xeva provides a function to plot time vs. tumor volume data for individual models as well as for individual batches. These data can be plotted by using the name of the batch:
+
+```{r plot1, fig.cap="Tumor growth curves for a batch of control and treated PDXs"}
+print(plotPDX(brca, batch = "X-4567.BKM120"))
+```
+
+
+You can choose to see different aspects of this visualization. For example, we can plot normalized volume; we can also change the colors of the lines:
+```{r pdxplot2, fig.cap="Tumor growth curves for a batch of control and treated PDXs. Here, the volume is normalized and plots are truncated at 40 days"}
+plotPDX(brca, batch = "X-4567.BKM120", vol.normal = TRUE, control.col = "#a6611a",
+        treatment.col = "#018571", major.line.size = 1, max.time = 40)
+```
+
+
+Data can also be visualized at the patient level by specifying *patient.id*:
+```{r pdxplot3, fig.cap="Tumor growth curves for a batch of control and treated PDXs generated using patient ID and drug name"}
+plotPDX(brca, patient.id="X-3078", drug="paclitaxel",control.name = "untreated")
+```
+
+
+
+
+# Replicate-based PDX experiments
+Xeva can also handle replicate-based experiment design. The datasets included in the package also contain replicate-based PDX experiments. To plot replicate-based data:
+```{r repplot1, fig.cap="Tumor growth curves for a batch of control and treated PDXs with replicates"}
+data("repdx")
+plotPDX(repdx, vol.normal = TRUE, batch = "P1")
+```
+
+```{r repplot2, fig.cap="Errorbar visualization for tumor growth curves of a PDX batch"}
+plotPDX(repdx, batch = "P3", SE.plot = "errorbar")
+```
+
+```{r repplot3, fig.cap="Ribbon visualization for tumor growth curves of a PDX batch"}
+plotPDX(repdx, batch = "P4", vol.normal = TRUE,  SE.plot = "ribbon")
+```
+
+
+
+
+# PDX Model Drug Response
+Xeva can effectively summarize PDX drug response data. Here we summarize the **mRECIST} values for the models in our dataset:
+
+```{r res1}
+brca.mr <- summarizeResponse(brca, response.measure = "mRECIST")
+brca.mr[1:5, 1:4]
+```
+
+These **mRECIST** values can be visualized using:
+
+```{r mR_BRCA, fig.cap="mRECIST plot for PDXE breast cancer data", fig.width=14.1, fig.height=7.8, fig.wide=TRUE}
+plotmRECIST(brca.mr, control.name="untreated", row_fontsize=13, col_fontsize=12)
+```
+
+
+Waterfall plots are also commonly used to visualize PDX drug response data.
+Xeva provides a function to visualize and color waterfall plots:
+
+```{r waterFall1, fig.cap="Waterfall plot for binimetinib drug response in PDXs", fig.width=14.1, fig.height=7.8, fig.wide=TRUE}
+waterfall(brca, drug="binimetinib", res.measure="best.average.response")
+```
+  
+
+It is useful to color the bars of your waterfall plot by genomic properties.
+Here we create a waterfall plot for drug BYL719 and color it based on the mutation status of the CDK13 gene.
+First, we extract the genomic data for the models. Then, we can plot the waterfall plots:
+
+```{r waterFall2, fig.cap="Waterfall plot for BYL719 drug response in PDXs", fig.width=14.1, fig.height=7.8, fig.wide=TRUE}
+mut <- summarizeMolecularProfiles(brca,drug = "BYL719", mDataType="mutation")
+model.type <- Biobase::exprs(mut)["CDK13", ]
+model.type[grepl("Mut", model.type)] <- "mutation"
+model.type[model.type!="mutation"] <- "wild type"
+model.color <- list("mutation"="#b2182b", "wild type"="#878787")
+waterfall(brca, drug="BYL719", res.measure="best.average.response",
+          model.id=names(model.type), model.type= model.type,
+          type.color = model.color)
+```
+
+
+In Xeva we have implemented difference matrix to compute PDX response.
+The Xeva function **response** provides a unified interface for this purpose.
+In the example below we compute the angle between treatment and control PDXs
+
+```{r response1}
+data("repdx")
+response(repdx, batch="P1", res.measure="angle")
+```
+
+
+
+
+# Gene-drug association
+The main aim of the pharmacogenomic experiments is to find biomarkers for drug response prediction.
+The Xeva package provides the **drugSensitivitySig** function to compute the univariate association between PDX's molecular data (such as gene expression) and response to a drug (gene-drug association). In the example bellow, we are computing the association between gene expression (RNASeq)
+and slope of the PDXs for the drug `tamoxifen` using linear regression (lm).
+
+```{r biomarker1}
+data(brca)
+drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
+                   features=c(1,2,3,4,5), sensitivity.measure="slope", fit="lm")
+```
+
+In this above example we took only 5 features (genes), however this can be
+extended for any number of genes. For larger analyses, this function also provides
+out of box parallel computation.
+
+Users can choose different sensitivity measures of the PDX response for the
+association analysis by setting the parameter **sensitivity.measure**.
+For example, below we use *best.average.response* as
+the PDX's response matrix in the association analysis:
+```{r biomarker2}
+data(brca)
+drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
+                   features=c(1,2,3,4,5),
+                   sensitivity.measure="best.average.response", fit = "lm")
+```
+
+
+For the drug-gene association analysis, users can also choose a different method
+of association calculation (such as concordance index, Pearson or Spearman
+correlation) by setting the parameter *fit*.
+
+```{r biomarker3, warning=FALSE}
+data(brca)
+drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
+                   features=c(1,2,3,4,5),
+                   sensitivity.measure="best.average.response", fit="pearson")
+```
