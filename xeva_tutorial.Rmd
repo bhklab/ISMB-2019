@@ -5,7 +5,7 @@ output:
     df_print: paged
 ---
 
-This hands on activity focuses on analysis of patient-drived xenograft (PDX) based pharmacogenomic data. We will use learn about PDX based drug screening and biomarker diovery. Using the R package `Xeva` we will visualise the PDX data. We will also perform univariate biomarker discovery in the PDX data.
+This hands-on activity focuses on analysis of patient-derived xenograft (PDX) based pharmacogenomic data. We will learn about PDX based drug screening and biomarker discovery. Using the R package `Xeva` we will visualise the PDX data. We will also perform univariate biomarker discovery in the PDX data.
 
 
 # Installation and Settings
