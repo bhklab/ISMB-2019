@@ -1,22 +1,26 @@
 ---
 title: "Xeva Tutorial"
-output: pdf_document
-header-includes: \usepackage{float}
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.pos = 'H')
+This hands on activity focuses on analysis of patient-drived xenograft (PDX) based pharmacogenomic data. We will use learn about PDX based drug screening and biomarker diovery. Using the R package `Xeva` we will visualise the PDX data. We will also perform univariate biomarker discovery in the PDX data.
 
-```
 
-## Installation and Settings
+# Installation and Settings
 
-Xeva requires that several packages be installed. All dependencies are available from CRAN or Bioconductor:
+[Xeva](https://bioconductor.org/packages/3.9/bioc/html/Xeva.html) requires that several packages be installed. All dependencies are available from CRAN or Bioconductor:
 
 ```{r getlib, results='hide', message=FALSE, eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install("Xeva", version = "3.9")
+BiocManager::install("Xeva")
+```
+Alternatively, the packgae can be installed for [Github](https://github.com/bhklab/Xeva):
+```{r gitHub, results='hide', message=FALSE, eval=FALSE}
+library(devtools)
+devtools::install_github("bhklab/Xeva")
 ```
 
 Load Xeva into your current workspace:
@@ -25,7 +29,7 @@ library(Biobase)
 library(Xeva)
 ```
 
-## Data Access
+# Data Access
 Now we load the dataset for the analysis. For the sake of this tutorial, here we load the Novartis PDXE \cite{gao2015high} breast cancer dataset as an example:
 ```{r l2, results='hide', message=FALSE, eval=TRUE}
 data(brca)
@@ -65,48 +69,49 @@ Here, for the batch named `X-1004.binimetinib`, we can see that the control samp
 
 
 
-## Visualizing PDX Growth Curve
+# Visualizing PDX Growth Curve
 
 Xeva provides a function to plot time vs. tumor volume data for individual models as well as for individual batches. These data can be plotted by using the name of the batch:
-```{r plot1, fig.cap="Tumor growth curves for a batch of control and treated PDXs", out.width='4in', fig.wide=TRUE}
-plotPDX(brca, batch = "X-4567.BKM120")
+
+```{r plot1, fig.cap="Tumor growth curves for a batch of control and treated PDXs"}
+print(plotPDX(brca, batch = "X-4567.BKM120"))
 ```
 
 
 You can choose to see different aspects of this visualization. For example, we can plot normalized volume; we can also change the colors of the lines:
-```{r pdxplot2, fig.cap="Tumor growth curves for a batch of control and treated PDXs. Here, the volume is normalized and plots are truncated at 40 days", out.width='4in', fig.wide=TRUE}
+```{r pdxplot2, fig.cap="Tumor growth curves for a batch of control and treated PDXs. Here, the volume is normalized and plots are truncated at 40 days"}
 plotPDX(brca, batch = "X-4567.BKM120", vol.normal = TRUE, control.col = "#a6611a",
         treatment.col = "#018571", major.line.size = 1, max.time = 40)
 ```
 
 
 Data can also be visualized at the patient level by specifying *patient.id*:
-```{r pdxplot3, fig.cap="Tumor growth curves for a batch of control and treated PDXs generated using patient ID and drug name", out.width='4in', fig.wide=TRUE}
+```{r pdxplot3, fig.cap="Tumor growth curves for a batch of control and treated PDXs generated using patient ID and drug name"}
 plotPDX(brca, patient.id="X-3078", drug="paclitaxel",control.name = "untreated")
 ```
 
 
 
 
-## Replicate-based PDX experiments
+# Replicate-based PDX experiments
 Xeva can also handle replicate-based experiment design. The datasets included in the package also contain replicate-based PDX experiments. To plot replicate-based data:
-```{r repplot1, fig.cap="Tumor growth curves for a batch of control and treated PDXs with replicates", out.width='4in', fig.wide=TRUE}
+```{r repplot1, fig.cap="Tumor growth curves for a batch of control and treated PDXs with replicates"}
 data("repdx")
 plotPDX(repdx, vol.normal = TRUE, batch = "P1")
 ```
 
-```{r repplot2, fig.cap="Errorbar visualization for tumor growth curves of a PDX batch", out.width='4in', fig.wide=TRUE}
+```{r repplot2, fig.cap="Errorbar visualization for tumor growth curves of a PDX batch"}
 plotPDX(repdx, batch = "P3", SE.plot = "errorbar")
 ```
 
-```{r repplot3, fig.cap="Ribbon visualization for tumor growth curves of a PDX batch", out.width='4in', fig.wide=TRUE}
+```{r repplot3, fig.cap="Ribbon visualization for tumor growth curves of a PDX batch"}
 plotPDX(repdx, batch = "P4", vol.normal = TRUE,  SE.plot = "ribbon")
 ```
 
 
 
 
-## PDX Model Drug Response
+# PDX Model Drug Response
 Xeva can effectively summarize PDX drug response data. Here we summarize the **mRECIST} values for the models in our dataset:
 
 ```{r res1}
@@ -157,7 +162,7 @@ response(repdx, batch="P1", res.measure="angle")
 
 
 
-## Gene-drug association
+# Gene-drug association
 The main aim of the pharmacogenomic experiments is to find biomarkers for drug response prediction.
 The Xeva package provides the **drugSensitivitySig** function to compute the univariate association between PDX's molecular data (such as gene expression) and response to a drug (gene-drug association). In the example bellow, we are computing the association between gene expression (RNASeq)
 and slope of the PDXs for the drug `tamoxifen` using linear regression (lm).
