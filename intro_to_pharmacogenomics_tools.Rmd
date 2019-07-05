@@ -293,9 +293,9 @@ the gene expression and sensitivity measures between the datasets using a
 standard correlation coefficient.
 
 ### Consistency of mRNA expression
-First we look at the consistency of gene expression profiles across the two datasets. 
-We use the same intersected PSets as above, and calculate Pearson correlations between
-the expression of common cell lines. 
+First we look at the consistency of gene expression profiles across the two
+datasets. We use the same intersected PSets as above, and calculate Pearson
+correlations between the expression of common cell lines.
 
 
 ```{r rnacons}
@@ -373,11 +373,11 @@ implemented in the GRmetrics package.
 
 # GRmetrics
 
-The GRmetrics implements the approach published by Hafner et al., to correct for 
-variability in drug sensitivity metrics caused by variations in growth rate of 
-the untreated cells. In this section, we will motivate the need for correcting 
-for growth rate, introduce the method from Hafner et al., and show an example
-of how the GRmetrics correct for growth rate discrepancies, using simulated data.
+The GRmetrics implements the approach published by Hafner et al., to correct for
+variability in drug sensitivity metrics caused by variations in growth rate of
+the untreated cells. In this section, we will motivate the need for correcting
+for growth rate, introduce the method from Hafner et al., and show an example of
+how the GRmetrics correct for growth rate discrepancies, using simulated data.
 
 ## Need for GR Correction
 
@@ -435,10 +435,10 @@ boxplot(dbl.times, las=3, ylab="Doubling Time in Hours")
 ```
 
 
-As we can see, the perturbation effect for BT20 is the strongest in this data. 
+As we can see, the perturbation effect for BT20 is the strongest in this data.
 Lets examine what the effect of this perturbation is on common summary metrics
-such as the IC50 and AUC. For sake of simplicity, we examine only drugA, at the 72
-hour timepoint:
+such as the IC50 and AUC. For sake of simplicity, we examine only drugA, at the
+72 hour timepoint:
 
 ```{r GReffect}
 
@@ -466,13 +466,81 @@ As we can see, the difference in doubling times affects both the AAC and the IC5
 Observing this effect, Hafner et al. introduced a method to correct for such variability.
 
 ## The GRmetrics Theory
+The idea behind the GR metrics is instead of calculating relative cell
+viabilities, to calculate the relative effect of the drug treatment on the
+growth rate, and then proceed with the analysis as usual. The basic formula is as follows:
 
-The idea behind the GR metrics is to correct the viability values by the rate of growth of the cell,
-and then proceed with the analysis as usual.
+$$GR(c,t) = 2^{\frac{k(c,t)}{k(0)}} - 1$$
 
 
+Here, $k(c,t)$ is the growth rate of the cell line treated with the drug at
+concentration $c$ and measured at time $t$. $k(0)$ is the growth rate of the
+cell line for the untreated control. In practice, GR values can be estimated
+using the starting number of cells seeded for each experiment, and the final
+number of cells at the end of the treatment when viability is measured. If $x$
+is a measure of cell number (either cell counting, or assays such as Cell Titer
+Glo which are proportional to cell number), then GR values can be calculated as:
+
+$$GR(c) = 2^{\frac{\log_2(x(c)/x_0)}{\log_2(x_{ctrl}/x_0)}} - 1$$
+
+It is important to note that unlike relative viability, GR values lie on a range
+of [-1,1]. Values $GR>0$ indicate that the drug is having a cytostatic effect,
+while values $GR<0$ indicate a cytotoxic effect.
+## Using the GRmetrics package to correct for growth rate discrepancies
+Let us now see whether this new approach to assessing cell viability can correct
+for differences in cell division time, and at the same time introduce some of
+the functionality in the *GRmetrics* package.
+
+The major function for performing GR metric inference is the *GRfit* function.
+This function takes as an argument a dataset, formatted similarly to the example
+dataset we are using in this section. It then performs the calculation of the GR
+values, fits a sigmoidal curve to the each experiment, and computes GR metrics
+(as well as their unmodified counterparts). Lets do so on our example data for
+the experiments we were examining above:
+
+```{r grfit}
+
+## groupingVariables determines which columns of the input define a unique
+## experiment. Here, we will combine both data frames and have the function
+## treat each perturbation as a separate experiment, using 3 determining values,
+## the cell_line and agent and perturbation status
+GR.fitted <- GRfit(rbind(pert0, pert1), groupingVariables=c("cell_line", "agent", "perturbation"))
+## We can use functions in GRmetrics directly on the GR.fitted object, to plot 
+## the drug dose response curves.
+p <- GRdrawDRC(GR.fitted, experiments = "all", plotly = FALSE)
+print(p)
+
+## GR.fitted is a SummarizedExperiment object, therefore to get at the actual values, we will use the assay command:
+
+head(assay(GR.fitted))
+
+```
+
+As we can see above, the GR values are stable to the effect of different
+doubling times of the cells lines in different conditions. We can examine this
+effect on the whole of the example dataset:
+
+```{r grfit.all}
+
+## We run all the 
+GR.fit.all <- GRfit(inputCaseA, c("cell_line", "agent", "perturbation"))
+
+GRbox(GR.fit.all, "AUC", groupVariable = c("perturbation"),plotly=FALSE, pointColor = "agent")
+GRbox(GR.fit.all, "GR_AOC", groupVariable = c("perturbation"),plotly=FALSE, pointColor = "agent")
+```
 
 
+Overall, we see that the GR_AOC values are much more stable between the two
+conditions compared to the AUC values. We encourage you to explore the effect on
+the other metrics as well, and if you want to learn more about the GRmethod, the
+Nature Methods paper is a great starting point.
+
+
+# Bonus: GDSCTools
+
+This section is a bonus, and will only be covered if we have ample time.
+However, we include it for the people in the audience who may not be a fan of
+working in the R programming language.
 
 # References 
 
