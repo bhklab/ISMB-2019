@@ -24,43 +24,16 @@ We have made the PharmacoSet objects of the curated datasets available for downl
 ```
 
 
-## Replication 
-In this section we will investigate the consistency between the GDSC and CCLE datasets. In both CCLE and GDSC, the transcriptome of cells was profiled using an Affymatrix microarray chip. Cells were also tested for their response to increasing concentrations of various compounds, and form this the IC50 and AUC were computed. However, the cell and drugs names used between the two datasets were not consistent. Furthermore, two different microarray platforms were used. However, *PharmacoGx* allows us to overcome these differences to do a comparative study between these two datasets. 
+### consistency assessment improved by Modified Concordance Index
+To better assess the concordance of multiple pharmacogenomic studies we introduced the modified concordance index (mCI). Recognizing that the noise in the drug screening assays is high and may yield to inaccurate sensitive-based ranking of cell lines with close AAC values, the mCI only considers cell line pairs with drug sensitivity (AAC) difference greater than $\delta$ .
 
-GDSC was profiled using the hgu133a platform, while CCLE was profiled with the expanded hgu133plus2 platform. While in this case the hgu133a is almost a strict subset of hgu133plus2 platform, the expression information in *PharmacoSet* objects is summarized by Ensemble Gene Ids, allowing datasets with different platforms to be directly compared. The probe to gene mapping is done using the BrainArray customCDF for each platform \cite{sabatti_thresholding_2002}.
-
-To begin, you would load the datasets from disk or download them using the *downloadPSet* function above.
-
-We want to investigate the consistency of the data between the two datasets. The common intersection between the datasets can then be found using *intersectPSet*. We create a summary of the gene expression and drug sensitivity measures for both datasets, so we are left with one gene expression profile and one sensitivity profile per cell line within each dataset. We can then compare the gene expression and sensitivity measures between the datasets using a standard correlation coefficient. 
-
-```{r Replicationcurves, fig.cap="Consistency of drug response curves across studies", results='hide'}
+```{r mci, eval=TRUE, results='hide'}
+c_index <-  mc_index <- NULL
 common <- intersectPSet(pSets = list("CCLE"=CCLE, "GDSC"=GDSC), 
                         intersectOn = c("cell.lines", "drugs"), 
                         strictIntersect = TRUE)
 drugs <- drugNames(common$CCLE)
 
-##Example of concordant and discordant drug curves
-cases <- rbind(
-  c("CAL-85-1", "17-AAG"),
-  c("HT-29", "PLX4720"),
-  c("COLO-320-HSR", "AZD6244"),
-  c("HT-1080", "PD-0332991"))
-
-par(mfrow=c(2, 2))
-for (i in seq_len(nrow(cases))) {
-  drugDoseResponseCurve(pSets=common, 
-                        drug=cases[i,2], 
-                        cellline=cases[i,1], 
-                        legends.label="ic50_published", 
-                        plot.type="Fitted", 
-                        ylim=c(0,130))
-}
-```
-
-### Consistency of pharmacological profiles
-```{r sensitivityscatterplots, fig.height=5, fig.width=10, fig.cap="Concordance of AAC values"}
-  
-  ##AAC scatter plot 
 GDSC.aac <- summarizeSensitivityProfiles(
     pSet=common$GDSC,
     sensitivity.measure='auc_recomputed', 
@@ -72,54 +45,6 @@ CCLE.aac <- summarizeSensitivityProfiles(
   summary.stat="median",
   verbose=FALSE)
 
-GDSC.ic50 <- summarizeSensitivityProfiles(
-    pSet=common$GDSC, 
-    sensitivity.measure='ic50_recomputed', 
-    summary.stat="median",
-    verbose=FALSE)
-CCLE.ic50 <- summarizeSensitivityProfiles(
-  pSet=common$CCLE, 
-  sensitivity.measure='ic50_recomputed', 
-  summary.stat="median",
-  verbose=FALSE)
-
-drug <- "lapatinib"
-#par(mfrow=c(1, 2))
-myScatterPlot(x=GDSC.aac[drug,], 
-              y=CCLE.aac[drug,], 
-              method=c("transparent"), 
-              transparency=0.8, pch=16, minp=50, 
-              xlim=c(0, max(max(GDSC.aac[drug,], na.rm=T), max(CCLE.aac[drug,], na.rm=T))), 
-              ylim=c(0, max(max(GDSC.aac[drug,], na.rm=T), max(CCLE.aac[drug,], na.rm=T))), 
-              main="cells response to lapatinib", 
-              cex.sub=0.7, 
-              xlab="AAC in GDSC", 
-              ylab="AAC in CCLE")
-legend("topright",
-         legend=sprintf("r=%s\nrs=%s\nCI=%s", 
-                 round(cor(GDSC.aac[drug,], 
-                           CCLE.aac[drug,], 
-                           method="pearson",
-                           use="pairwise.complete.obs"), 
-                       digits=2),
-                 round(cor(GDSC.aac[drug,], 
-                           CCLE.aac[drug,], 
-                           method="spearman",
-                           use="pairwise.complete.obs"), 
-                       digits=2),
-                 round(paired.concordance.index(GDSC.aac[drug,],
-                                                CCLE.aac[drug,],
-                                                delta.pred=0,
-                                                delta.obs=0)$cindex, 
-                       digits=2)), 
-         bty="n")
-```
-
-### consistency assessment improved by Modified Concordance Index
-To better assess the concordance of multiple pharmacogenomic studies we introduced the modified concordance index (mCI). Recognizing that the noise in the drug screening assays is high and may yield to inaccurate sensitive-based ranking of cell lines with close AAC values, the mCI only considers cell line pairs with drug sensitivity (AAC) difference greater than $\delta$ .
-
-```{r mci, eval=TRUE, results='hide'}
-c_index <-  mc_index <- NULL
 for(drug in drugs){
   tt <- mCI::paired.concordance.index(GDSC.aac[drug,], CCLE.aac[drug,], delta.pred=0, delta.obs=0, alternative="greater")
   c_index <- c(c_index, tt$cindex)
