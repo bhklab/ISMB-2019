@@ -9,7 +9,7 @@ Load `r BiocStyle::Biocpkg("PharmacoGx")` into your current workspace:
 ```{r loadlib, eval=TRUE, results='hide'}
 suppressPackageStartupMessages({
   library(PharmacoGx, verbose=FALSE)
-  library(mCI, verbose=FALSE)
+  library(wCI, verbose=FALSE)
   library(PharmacoGxML, verbose=FALSE)
   library(Biobase, verbose=FALSE)
 })
@@ -61,15 +61,15 @@ The association between molecular features and response to a given drug is model
 $$Y = \beta_{0} + \beta_{i}G_i + \beta_{t}T + \beta_{b}B$$
 where $Y$ denotes the drug sensitivity variable, $G_i$, $T$ and $B$ denote the expression of gene $i$, the tissue source and the experimental batch respectively, and $\beta$s are the regression coefficients. The strength of gene-drug association is quantified by $\beta_i$, above and beyond the relationship between drug sensitivity and tissue source. The variables $Y$ and $G$ are scaled (standard deviation equals to 1) to estimate standardized coefficients from the linear model. Significance of the gene-drug association is estimated by the statistical significance of $\beta_i$ (two-sided t test). P-values are then corrected for multiple testing using the false discovery rate (FDR) approach.
 
-As an example of the reproducibility of biomarker discovery across pharmacogenomic studies, we can model the significance of the association between two drugs and their known biomarkers in CCLE and GDSC. We examine the association between drug *17-AAG* and gene *NQO1*, as well as drug *PD-0325901* and gene *BRAF*:
+As an example of the reproducibility of biomarker discovery across pharmacogenomic studies, we can model the significance of the association between two drugs and their known biomarkers in CCLE and GDSC. We examine the association between drug *Erlotinib* and gene *EGFR*, as well as drug *PD-0325901* and gene *BRAF*:
 
 ``` {r biomarker_discovery, results='hide'} 
   features <- PharmacoGx::fNames(CCLE, "rna")[
     which(featureInfo(CCLE,
-                      "rna")$Symbol == "NQO1")]
+                      "rna")$Symbol == "EGFR")]
     ccle.sig.rna <- drugSensitivitySig(pSet=CCLE, 
                                   mDataType="rna", 
-                                  drugs=c("17-AAG"), 
+                                  drugs=c("Erlotinib"), 
                                   features=features, 
                                   sensitivity.measure="auc_published", 
                                   molecular.summary.stat="median", 
@@ -77,7 +77,7 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
                                   verbose=FALSE)
     gdsc.sig.rna <- drugSensitivitySig(pSet=GDSC, 
                                   mDataType="rna", 
-                                  drugs=c("17-AAG"), 
+                                  drugs=c("Erlotinib"), 
                                   features=features, 
                                   sensitivity.measure="auc_published", 
                                   molecular.summary.stat="median", 
@@ -105,20 +105,20 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
                               "GDSC pvalue"=gdsc.sig[,6], 
                               "CCLE effect size"=ccle.sig[,1], 
                               "CCLE pvalue"=ccle.sig[,6])
-    rownames(known.biomarkers) <- c("17-AAG + NQO1","PD-0325901 + BRAF")
+    rownames(known.biomarkers) <- c("Erlotinib + EGFR","PD-0325901 + BRAF")
     library(xtable, verbose=FALSE)
     xtable(known.biomarkers, digits=c(0, 2, -1, 2, -1), caption='Concordance of biomarkers across stuudies')
     par(mfrow=c(2, 2))
     CCLE_expr <- t(exprs(summarizeMolecularProfiles(CCLE, mDataType="rna", fill.missing=FALSE)))
     CCLE_cells <- intersect(rownames(CCLE_expr), colnames(CCLE.aac))
-    plot(CCLE.aac["17-AAG", CCLE_cells], CCLE_expr[CCLE_cells, features],
-     main="CCLE + 17-AAG + NQO1",
+    plot(CCLE.aac["Erlotinib", CCLE_cells], CCLE_expr[CCLE_cells, features],
+     main="CCLE + Erlotinib + EGFR",
      cex.main=1, ylab="Predictions", xlab="drug sensitivity", pch=20, col="gray40")
 
     GDSC_expr <- t(exprs(summarizeMolecularProfiles(GDSC, mDataType="rna", fill.missing=FALSE)))
     GDSC_cells <- intersect(rownames(GDSC_expr), colnames(GDSC.aac))
-    plot(GDSC.aac["17-AAG", GDSC_cells], GDSC_expr[GDSC_cells, features],
-     main="GDSC + 17-AAG + NQO1",
+    plot(GDSC.aac["Erlotinib", GDSC_cells], GDSC_expr[GDSC_cells, features],
+     main="GDSC + Erlotinib + EGFR",
      cex.main=1, ylab="Predictions", xlab="drug sensitivity", pch=20, col="gray40")
     
     CCLE_mut <- t(exprs(summarizeMolecularProfiles(CCLE, mDataType="mutation", fill.missing=FALSE, summary.stat="or")))
