@@ -25,9 +25,9 @@ We have made the PharmacoSet objects of the curated datasets available for downl
 
 
 ### consistency assessment improved by Modified Concordance Index
-To better assess the concordance of multiple pharmacogenomic studies we introduced the modified concordance index (mCI). Recognizing that the noise in the drug screening assays is high and may yield to inaccurate sensitive-based ranking of cell lines with close AAC values, the mCI only considers cell line pairs with drug sensitivity (AAC) difference greater than $\delta$ .
+To better assess the concordance of multiple pharmacogenomic studies we introduced the modified concordance index (wCI). Recognizing that the noise in the drug screening assays is high and may yield to inaccurate sensitive-based ranking of cell lines with close AAC values, the wCI only considers cell line pairs with drug sensitivity (AAC) difference greater than $\delta$ .
 
-```{r mci, eval=TRUE, results='hide'}
+```{r wCI, eval=TRUE, results='hide'}
 c_index <-  mc_index <- NULL
 common <- intersectPSet(pSets = list("CCLE"=CCLE, "GDSC"=GDSC), 
                         intersectOn = c("cell.lines", "drugs"), 
@@ -46,12 +46,12 @@ CCLE.aac <- summarizeSensitivityProfiles(
   verbose=FALSE)
 
 for(drug in drugs){
-  tt <- mCI::paired.concordance.index(GDSC.aac[drug,], CCLE.aac[drug,], delta.pred=0, delta.obs=0, alternative="greater")
+  tt <- wCI::paired.concordance.index(GDSC.aac[drug,], CCLE.aac[drug,], delta.pred=0, delta.obs=0, alternative="greater")
   c_index <- c(c_index, tt$cindex)
-  tt <- mCI::paired.concordance.index(GDSC.aac[drug,], CCLE.aac[drug,], delta.pred=0.2, delta.obs=0.2, alternative="greater", logic.operator="or")
+  tt <- wCI::paired.concordance.index(GDSC.aac[drug,], CCLE.aac[drug,], delta.pred=0.2, delta.obs=0.2, alternative="greater", logic.operator="or")
   mc_index <- c(mc_index, tt$cindex)
 }
-mp <- barplot(as.vector(rbind(c_index, mc_index)), beside=TRUE, col=c("blue", "red"), ylim=c(0, 1), ylab="concordance index", space=c(.15,.85), border=NA, main="mCI")
+mp <- barplot(as.vector(rbind(c_index, mc_index)), beside=TRUE, col=c("blue", "red"), ylim=c(0, 1), ylab="concordance index", space=c(.15,.85), border=NA, main="rCI")
 text(mp, par("usr")[3], labels=as.vector(rbind(drugs, rep("", 15))), srt=45, adj=c(1.1,1.1), xpd=TRUE, cex=.8)
 abline(h=.7, lty=2)
 ```
@@ -167,13 +167,13 @@ for(method in c("ridge", "lasso", "random_forest", "svm")){
                       sampling.no=1,
                       features.no=10,
                       feature.selection="mRMR",
-                      assessment=c("corr", "mCI"))
+                      assessment=c("corr", "rCI"))
   
   validation_labels <- validation(model=res$model$lapatinib,
                                   validation.set=t(exprs(validation_expr)),
                                   validation.labels=actual_labels,
                                   method=method,
-                                  assessment="mCI")
+                                  assessment="rCI")
 
 }
 ```
