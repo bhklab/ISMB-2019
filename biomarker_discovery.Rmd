@@ -8,19 +8,26 @@ output:
 Load `r BiocStyle::Biocpkg("PharmacoGx")` into your current workspace:
 ```{r loadlib, eval=TRUE, results='hide'}
 suppressPackageStartupMessages({
-  library(PharmacoGx, verbose=FALSE)
-  library(wCI, verbose=FALSE)
-  library(PharmacoGxML, verbose=FALSE)
-  library(Biobase, verbose=FALSE)
+  require(BiocManager) || install.packages("BiocManager")
+  require(PharmacoGx) || install("PharmacoGx")
+  require(Biobase) || install("Biobase")
+  require(devtools) || install.packages("devtools")
+  require(glmnet) || install.packages("Hmisc")
+  require(glmnet) || install.packages("glmnet")
+  require(wCI) || install_github("bhklab/wCI")
+  require(PharmacoGxML) || install_github("bhklab/PharmacoGxML")
+  require(xtable) || install.packages("xtable")
+
 })
 ```
 
 ### Downloading PharmacoSet objects
 We have made the PharmacoSet objects of the curated datasets available for download using functions provided in the package. A table of available PharmacoSet objects can be obtained by using the *availablePSets* function. Any of the PharmacoSets in the table can then be downloaded by calling *downloadPSet*, which saves the datasets into a directory of the users choice, and returns the data into the R session. 
 ```{r download_psets, eval=TRUE, results='hide'}
-  availablePSets(saveDir=file.path(".", "Safikhani_Pharmacogenomics"))
+  availablePSets(saveDir=file.path(".", "pSets"))
   GDSC <- downloadPSet("GDSC", saveDir=file.path(".", "PSets")) 
   CCLE <- downloadPSet("CCLE", saveDir=file.path(".", "PSets"))
+  
 ```
 
 
@@ -34,12 +41,12 @@ common <- intersectPSet(pSets = list("CCLE"=CCLE, "GDSC"=GDSC),
                         strictIntersect = TRUE)
 drugs <- drugNames(common$CCLE)
 
-GDSC.aac <- summarizeSensitivityProfiles(
+GDSC.aac <- PharmacoGx::summarizeSensitivityProfiles(
     pSet=common$GDSC,
     sensitivity.measure='auc_recomputed', 
     summary.stat="median",
     verbose=FALSE)
-CCLE.aac <- summarizeSensitivityProfiles(
+CCLE.aac <- PharmacoGx::summarizeSensitivityProfiles(
   pSet=common$CCLE,
   sensitivity.measure='auc_recomputed', 
   summary.stat="median",
@@ -67,7 +74,7 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
   features <- PharmacoGx::fNames(CCLE, "rna")[
     which(featureInfo(CCLE,
                       "rna")$Symbol == "EGFR")]
-    ccle.sig.rna <- drugSensitivitySig(pSet=CCLE, 
+    ccle.sig.rna <- PharmacoGx::drugSensitivitySig(pSet=CCLE, 
                                   mDataType="rna", 
                                   drugs=c("Erlotinib"), 
                                   features=features, 
@@ -75,7 +82,7 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
                                   molecular.summary.stat="median", 
                                   sensitivity.summary.stat="median",
                                   verbose=FALSE)
-    gdsc.sig.rna <- drugSensitivitySig(pSet=GDSC, 
+    gdsc.sig.rna <- PharmacoGx::drugSensitivitySig(pSet=GDSC, 
                                   mDataType="rna", 
                                   drugs=c("Erlotinib"), 
                                   features=features, 
@@ -83,7 +90,7 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
                                   molecular.summary.stat="median", 
                                   sensitivity.summary.stat="median",
                                   verbose=FALSE)
-    ccle.sig.mut <- drugSensitivitySig(pSet=CCLE, 
+    ccle.sig.mut <- PharmacoGx::drugSensitivitySig(pSet=CCLE, 
                                   mDataType="mutation", 
                                   drugs=c("PD-0325901"), 
                                   features="BRAF", 
@@ -106,30 +113,31 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
                               "CCLE effect size"=ccle.sig[,1], 
                               "CCLE pvalue"=ccle.sig[,6])
     rownames(known.biomarkers) <- c("Erlotinib + EGFR","PD-0325901 + BRAF")
-    library(xtable, verbose=FALSE)
-    xtable(known.biomarkers, digits=c(0, 2, -1, 2, -1), caption='Concordance of biomarkers across stuudies')
+
+    #xtable(known.biomarkers, digits=c(0, 2, -1, 2, -1), caption='Concordance of biomarkers across stuudies')
+    head(known.biomarkers)
     par(mfrow=c(2, 2))
-    CCLE_expr <- t(exprs(summarizeMolecularProfiles(CCLE, mDataType="rna", fill.missing=FALSE)))
+    CCLE_expr <- t(exprs(PharmacoGx::summarizeMolecularProfiles(CCLE, mDataType="rna", fill.missing=FALSE)))
     CCLE_cells <- intersect(rownames(CCLE_expr), colnames(CCLE.aac))
     plot(CCLE.aac["Erlotinib", CCLE_cells], CCLE_expr[CCLE_cells, features],
-     main="CCLE + Erlotinib + EGFR",
-     cex.main=1, ylab="Predictions", xlab="drug sensitivity", pch=20, col="gray40")
+         main="CCLE + Erlotinib + EGFR",
+         cex.main=1, ylab="Predictions", xlab="drug sensitivity", pch=20, col="gray40")
 
-    GDSC_expr <- t(exprs(summarizeMolecularProfiles(GDSC, mDataType="rna", fill.missing=FALSE)))
+    GDSC_expr <- t(exprs(PharmacoGx::summarizeMolecularProfiles(GDSC, mDataType="rna", fill.missing=FALSE)))
     GDSC_cells <- intersect(rownames(GDSC_expr), colnames(GDSC.aac))
-    plot(GDSC.aac["Erlotinib", GDSC_cells], GDSC_expr[GDSC_cells, features],
-     main="GDSC + Erlotinib + EGFR",
-     cex.main=1, ylab="Predictions", xlab="drug sensitivity", pch=20, col="gray40")
+    plot(GDSC.aac["Erlotinib", GDSC_cells], GDSC_expr[GDSC_cells, features], 
+         main="GDSC + Erlotinib + EGFR",
+         cex.main=1, ylab="Predictions", xlab="drug sensitivity", pch=20, col="gray40")
     
-    CCLE_mut <- t(exprs(summarizeMolecularProfiles(CCLE, mDataType="mutation", fill.missing=FALSE, summary.stat="or")))
-CCLE_cells <- intersect(rownames(CCLE_mut), colnames(CCLE.aac))
-boxplot(CCLE.aac["PD-0325901", CCLE_cells]~ CCLE_mut[CCLE_cells, "BRAF"], col="gray80", pch=20, main="CCLE + PD-0325901 + BRAF",
-        cex.main=1, xlab="mutation", ylab="drug sensitivity")
-
-GDSC_mut <- t(exprs(summarizeMolecularProfiles(GDSC, mDataType="mutation", fill.missing=FALSE, summary.stat="or")))
-GDSC_cells <- intersect(rownames(GDSC_mut), colnames(GDSC.aac))
-boxplot(GDSC.aac["PD-0325901", GDSC_cells]~ GDSC_mut[GDSC_cells, "BRAF"], col="gray80", pch=20, main="GDSC + PD-0325901 + BRAF",
-        cex.main=1, xlab="mutation", ylab="drug sensitivity")
+    CCLE_mut <- t(exprs(PharmacoGx::summarizeMolecularProfiles(CCLE, mDataType="mutation", fill.missing=FALSE, summary.stat="or")))
+    CCLE_cells <- intersect(rownames(CCLE_mut), colnames(CCLE.aac))
+    boxplot(CCLE.aac["PD-0325901", CCLE_cells]~ CCLE_mut[CCLE_cells, "BRAF"], col="gray80", pch=20, main="CCLE + PD-0325901 + BRAF",
+            cex.main=1, xlab="mutation", ylab="drug sensitivity")
+    
+    GDSC_mut <- t(exprs(PharmacoGx::summarizeMolecularProfiles(GDSC, mDataType="mutation", fill.missing=FALSE, summary.stat="or")))
+    GDSC_cells <- intersect(rownames(GDSC_mut), colnames(GDSC.aac))
+    boxplot(GDSC.aac["PD-0325901", GDSC_cells]~ GDSC_mut[GDSC_cells, "BRAF"], col="gray80", pch=20, main="GDSC + PD-0325901 + BRAF",
+            cex.main=1, xlab="mutation", ylab="drug sensitivity")
 
 ```
 
@@ -139,28 +147,25 @@ Some of the widely used multivariate machine learning methods such as elastic ne
 
 ```{r machine_learning, results='hide'} 
 suppressPackageStartupMessages({
-  library(mRMRe, verbose=FALSE)
-  library(Biobase, verbose=FALSE)
-  library(Hmisc, verbose=FALSE)
-  library(glmnet, verbose=FALSE)
-  library(caret, verbose=FALSE)
-  library(randomForest, verbose=FALSE)
+  require(mRMRe) ||  install.packages("mRMRe")
+  require(caret) || install.packages("caret")
+  require(randomForest) || install.packages("randomForest")
 })
 ##Preparing trainig dataset
-train_expr <- t(exprs(summarizeMolecularProfiles(GDSC, mDataType="rna", fill.missing=FALSE, verbose=FALSE)))
-aac <- summarizeSensitivityProfiles(GDSC, sensitivity.measure="auc_recomputed", drug="lapatinib", fill.missing=FALSE, verbose=FALSE)
+train_expr <- t(exprs(PharmacoGx::summarizeMolecularProfiles(GDSC, mDataType="rna", fill.missing=FALSE, verbose=FALSE)))
+aac <- PharmacoGx::summarizeSensitivityProfiles(GDSC, sensitivity.measure="auc_recomputed", drug="lapatinib", fill.missing=FALSE, verbose=FALSE)
 cells <- intersect(rownames(train_expr), names(aac))
 df <- as.matrix(cbind(train_expr[cells,], "lapatinib"=aac[cells]))
 
 
 ##Preparing validation dataset
-validation_expr <- summarizeMolecularProfiles(CCLE, mDataType="rna", fill.missing=FALSE, verbose=FALSE)
-actual_labels <- summarizeSensitivityProfiles(CCLE, sensitivity.measure="auc_recomputed", drug="lapatinib", fill.missing=FALSE, verbose=FALSE)
+validation_expr <- PharmacoGx::summarizeMolecularProfiles(CCLE, mDataType="rna", fill.missing=FALSE, verbose=FALSE)
+actual_labels <- PharmacoGx::summarizeSensitivityProfiles(CCLE, sensitivity.measure="auc_recomputed", drug="lapatinib", fill.missing=FALSE, verbose=FALSE)
 
 
 for(method in c("ridge", "lasso", "random_forest", "svm")){
   par(mfrow=c(1, 2))
-  res <- optimization(train=df[, -ncol(df), drop=F],
+  res <- PharmacoGxML::optimization(train=df[, -ncol(df), drop=F],
                       labels=t(df[, ncol(df), drop=F]),
                       method=method,
                       folds.no=5,
@@ -169,7 +174,7 @@ for(method in c("ridge", "lasso", "random_forest", "svm")){
                       feature.selection="mRMR",
                       assessment=c("corr", "rCI"))
   
-  validation_labels <- validation(model=res$model$lapatinib,
+  validation_labels <- PharmacoGxML::validation(model=res$model$lapatinib,
                                   validation.set=t(exprs(validation_expr)),
                                   validation.labels=actual_labels,
                                   method=method,
@@ -185,6 +190,5 @@ This document was generated with the following R version and packages loaded:
 ```{r sessionInfo}
   sessionInfo()
 ```
-
 
 
