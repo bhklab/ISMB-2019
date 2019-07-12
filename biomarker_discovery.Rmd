@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
   require(PharmacoGx) || install("PharmacoGx")
   require(Biobase) || install("Biobase")
   require(devtools) || install.packages("devtools")
-  require(glmnet) || install.packages("Hmisc")
+  require(Hmisc) || install.packages("Hmisc")
   require(glmnet) || install.packages("glmnet")
   require(wCI) || install_github("bhklab/wCI")
   require(PharmacoGxML) || install_github("bhklab/PharmacoGxML")
