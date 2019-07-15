@@ -5,7 +5,23 @@ output:
     df_print: paged
 ---
 
-The main purpose of this hands on activity is to familiarize the participant with the different packages available to download, preprocess and visualize pharmacogenomics data. In particular, we will be focusing on two R packages, `PharmacoGx` [1][] and `GRmetrics`, and giving a brief overview of the `GDSCTools` python package. 
+The main purpose of this hands on activity is to familiarize the participant
+with the different packages available to download, preprocess and visualize
+pharmacogenomics data. In particular, we will be focusing on two R packages,
+`PharmacoGx` and `GRmetrics`, and we will reference the `GDSCTools` python
+package for further exploration on your own, if you prefer to work in python.
+The following code chunk is not evaluated, but included in case you wish to run
+this on your own machine: it would install all the packages used in this
+markdown document.
+```{r install.all, eval=FALSE, echo=TRUE}
+
+## Load Bioconductor Installer
+install.packages("BiocManager")
+library(BiocManager)
+## install function provided by BioC installs across Bioconductor and CRAN
+install(c("PharmacoGx", "Biobase", "GRmetrics", "ggplot2", "reshape2"))
+
+```
 
 
 # PharmacoGx
@@ -35,12 +51,11 @@ for extracting and summarizing pharmacogenomics data.
 To install `r BiocStyle::Biocpkg("PharmacoGx")`, we use the `r
 BiocStyle::CRANpkg("BiocManager")` library:
 
-```{r loadlib1, eval=TRUE, results='hide'}
-getwd()
+```{r loadlib1, eval=FALSE, results='hide'}
 
 library(BiocManager)
-library(Biobase)
-require(PharmacoGx) || install("PharmacoGx")
+install("Biobase")
+install("PharmacoGx") 
 
 ```
 
@@ -75,7 +90,7 @@ and returns the data into the R session. Lets try downloading the GDSC and CCLE
 PSets.
 ```{r download_psets, eval=TRUE}
   availablePSets(saveDir=file.path(".", "PSets"))
-  GDSC <- downloadPSet("GDSC", saveDir=file.path(".", "PSets")) 
+  GDSC <- downloadPSet("GDSC", saveDir=file.path(".", "PSets"))
   CCLE <- downloadPSet("CCLE", saveDir=file.path(".", "PSets"))
 ```
 
@@ -107,7 +122,7 @@ While we will introduce some of the functions for working with PSets in this
 tutorial, the documentation of the PharmacoSet object contains descriptions of
 the available functions to interface with PSet objects:
 
-```{r docs, eval=TRUE}
+```{r docs, eval=FALSE}
 ?`PharmacoSet-class`
 ```
 
@@ -244,8 +259,8 @@ BiocStyle::Biocpkg("Biobase")` *ExpressionSet* object, while drug sensitivity
 data is returned as a matrix.
 
 ```{r summary}
-dim(summarizeMolecularProfiles(CCLE, "rna"))
-dim(summarizeSensitivityProfiles(CCLE))
+dim(PharmacoGx::summarizeMolecularProfiles(CCLE, "rna"))
+dim(PharmacoGx::summarizeSensitivityProfiles(CCLE))
 ```
 
 
@@ -255,7 +270,7 @@ AUC values within CCLE.
 ```{r ccleauc, fig.cap="Cells response to drugs in CCLE"}
 library(ggplot2, verbose=FALSE)
 library(reshape2, verbose=FALSE)
-CCLE.auc <- summarizeSensitivityProfiles(CCLE, sensitivity.measure = "auc_recomputed")
+CCLE.auc <- PharmacoGx::summarizeSensitivityProfiles(CCLE, sensitivity.measure = "auc_recomputed")
 melted_data <- melt(CCLE.auc)
 NA_rows <- unique(which(is.na(melted_data), arr.ind=T)[,1])
 melted_data <- melted_data[-NA_rows,]
@@ -281,7 +296,7 @@ expanded hgu133plus2 platform. While in this case the hgu133a is almost a strict
 subset of hgu133plus2 platform, the expression information in *PharmacoSet*
 objects is summarized by Ensemble Gene Ids, allowing datasets with different
 platforms to be directly compared. The probe to gene mapping is done using the
-BrainArray customCDF for each platform \cite{sabatti_thresholding_2002}.
+BrainArray customCDF for each platform.
 To begin, you would load the datasets from disk or download them using the
 *downloadPSet* function above.
 We want to investigate the consistency of the data between the two datasets. The
@@ -306,12 +321,12 @@ common <- intersectPSet(pSets = list("CCLE"=CCLE, "GDSC"=GDSC),
 common.features <- intersect(rownames(featureInfo(common$GDSC, "rna")),
                              rownames(featureInfo(common$CCLE, "rna")))
 
-GDSC.rna <- summarizeMolecularProfiles(common$GDSC, "rna", 
+GDSC.rna <- PharmacoGx::summarizeMolecularProfiles(common$GDSC, "rna", 
                                        features = common.features)
-CCLE.rna <- summarizeMolecularProfiles(common$CCLE, "rna",
+CCLE.rna <- PharmacoGx::summarizeMolecularProfiles(common$CCLE, "rna",
                                        features = common.features)
 
-cors.gexp <- cor(exprs(GDSC.rna), exprs(CCLE.rna), use="pairwise.complete")
+cors.gexp <- cor(Biobase::exprs(GDSC.rna), Biobase::exprs(CCLE.rna), use="pairwise.complete")
 hist(diag(cors.gexp), main="Correlations of gene expression between same cell lines", xlim=c(-1,1))
 boxplot(list(Same=diag(cors.gexp), Different = cors.gexp[upper.tri(cors.gexp)]), col=rainbow(5), main="Comparison of gene expression profiles")
 ```
@@ -352,8 +367,8 @@ line response between datasets.
 ```{r consistency_pharmaco,  results='hide'}
 
 
-GDSC.auc <- summarizeSensitivityProfiles(common$GDSC)
-CCLE.auc <- summarizeSensitivityProfiles(common$CCLE)
+GDSC.auc <- PharmacoGx::summarizeSensitivityProfiles(common$GDSC)
+CCLE.auc <- PharmacoGx::summarizeSensitivityProfiles(common$CCLE)
 
 corssens <- cor(GDSC.auc, CCLE.auc, use="pairwise.complete")
 hist(diag(corssens), main="Correlations of drug sensitivity between same cell lines", breaks=50)
@@ -401,8 +416,6 @@ We will now show that this is not enough, using some simulated drug response
 data available in the GRmetrics R package. First, let us load the package.
 
 ```{r loadGRmetrics}
-
-require(GRmetrics) || install("GRmetrics")
 
 library(GRmetrics)
 
@@ -520,10 +533,13 @@ As we can see above, the GR values are stable to the effect of different
 doubling times of the cells lines in different conditions. We can examine this
 effect on the whole of the example dataset:
 
-```{r grfit.all}
+```{r grfit.all, warning=NULL}
 
-## We run all the 
-GR.fit.all <- GRfit(inputCaseA, c("cell_line", "agent", "perturbation"))
+## We run all the experiments in GRfit
+suppressWarnings({
+  GR.fit.all <- GRfit(inputCaseA, c("cell_line", "agent", "perturbation"))
+}) 
+# Above warns many times about curve fitting parameters and NaN's produced by logarithms of 0 dose
 
 GRbox(GR.fit.all, "AUC", groupVariable = c("perturbation"),plotly=FALSE, pointColor = "agent")
 GRbox(GR.fit.all, "GR_AOC", groupVariable = c("perturbation"),plotly=FALSE, pointColor = "agent")
@@ -538,14 +554,53 @@ Nature Methods paper is a great starting point.
 
 # Bonus: GDSCTools
 
-This section is a bonus, and will only be covered if we have ample time.
-However, we include it for the people in the audience who may not be a fan of
-working in the R programming language.
+Unfortunately, we don't have time to cover the GDSCTools package in depth. However,
+we want to bring the reader's attention to the package, which provides much of the 
+functionality described above within the Python programming language. 
+
+Specifically, GDSCTools provides the ability to download the GDSC data as well
+as input their own, use ANOVA modelling to find novel univariate biomakers
+of drug response from the preclinical data, do basic multivariate modelling
+using ElasticNet regression, and visualize all these results.
+
+For interested readers, we encourage them to review the documentation at:
+https://gdsctools.readthedocs.io/en/master/index.html
+
 
 # References 
 
+In this section, we include references to the Tools and Datasets covered above.
+
+PharmacoGx: 
+
+Smirnov, P. et al. PharmacoGx: An R package for analysis of large
+pharmacogenomic datasets. Bioinformatics 32, 1244–1246 (2016).
+
+CCLE Dataset:
+
+Barretina, J. et al. The Cancer Cell Line Encyclopedia enables
+predictive modelling of anticancer drug sensitivity. Nature 483, 603–607 (2012).
+
+GDSC Dataset (Called CGP at the time of publication): 
+
+Garnett, M. J. et al. Systematic identification of genomic markers of drug
+sensitivity in cancer cells. Nature 483, 570–575 (2012).
+
+BrainArray CDF Files:
+
+Sabatti, C., Karsten, S. L. & Geschwind, D. H. Thresholding rules for recovering a sparse signal from microarray experiments. Math Biosci 176, 17–34 (2002).
 
 
+GR Corrected Metrics:
+
+Hafner, M., Niepel, M. & Sorger, P. K. Alternative drug sensitivity metrics improve preclinical cancer pharmacogenomics. Nature Biotechnology (2017). doi:10.1038/nbt.3882
+
+Hafner, M., Niepel, M., Chung, M. & Sorger, P. K. Growth rate inhibition metrics correct for confounders in measuring sensitivity to cancer drugs. Nat Meth advance online publication, (2016).
+
+Hafner, M., Niepel, M., Chung, M. & Sorger, P. K. Growth rate inhibition metrics correct for confounders in measuring sensitivity to cancer drugs. Nature Methods 13, 521–527 (2016).
+
+GDSCTools:
+Cokelaer, T. et al. GDSCTools for mining pharmacogenomic interactions in cancer. Bioinformatics 34, 1226–1228 (2018).
 
 
 
