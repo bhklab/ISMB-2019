@@ -17,8 +17,10 @@ suppressPackageStartupMessages({
   require(wCI) || install_github("bhklab/wCI")
   require(PharmacoGxML) || install_github("bhklab/PharmacoGxML")
   require(xtable) || install.packages("xtable")
-
-})
+  require(mRMRe) ||  install.packages("mRMRe")
+  require(caret) || install.packages("caret")
+  require(randomForest) || install.packages("randomForest")
+  require("hgu133a.db") || BiocManager::install("hgu133a.db")
 ```
 
 ### Downloading PharmacoSet objects
@@ -70,42 +72,42 @@ where $Y$ denotes the drug sensitivity variable, $G_i$, $T$ and $B$ denote the e
 
 As an example of the reproducibility of biomarker discovery across pharmacogenomic studies, we can model the significance of the association between two drugs and their known biomarkers in CCLE and GDSC. We examine the association between drug *Erlotinib* and gene *EGFR*, as well as drug *PD-0325901* and gene *BRAF*:
 
-``` {r biomarker_discovery, results='hide'} 
+``` {r biomarker_discovery, eval=TRUE, results='hide'} 
   features <- PharmacoGx::fNames(CCLE, "rna")[
     which(featureInfo(CCLE,
                       "rna")$Symbol == "EGFR")]
     ccle.sig.rna <- PharmacoGx::drugSensitivitySig(pSet=CCLE, 
-                                  mDataType="rna", 
-                                  drugs=c("Erlotinib"), 
-                                  features=features, 
-                                  sensitivity.measure="auc_published", 
-                                  molecular.summary.stat="median", 
-                                  sensitivity.summary.stat="median",
-                                  verbose=FALSE)
+                                                  mDataType="rna", 
+                                                  drugs=c("Erlotinib"), 
+                                                  features=features, 
+                                                  sensitivity.measure="auc_published", 
+                                                  molecular.summary.stat="median", 
+                                                  sensitivity.summary.stat="median",
+                                                  verbose=FALSE)
     gdsc.sig.rna <- PharmacoGx::drugSensitivitySig(pSet=GDSC, 
-                                  mDataType="rna", 
-                                  drugs=c("Erlotinib"), 
-                                  features=features, 
-                                  sensitivity.measure="auc_published", 
-                                  molecular.summary.stat="median", 
-                                  sensitivity.summary.stat="median",
-                                  verbose=FALSE)
+                                                  mDataType="rna", 
+                                                  drugs=c("Erlotinib"), 
+                                                  features=features, 
+                                                  sensitivity.measure="auc_published", 
+                                                  molecular.summary.stat="median", 
+                                                  sensitivity.summary.stat="median",
+                                                  verbose=FALSE)
     ccle.sig.mut <- PharmacoGx::drugSensitivitySig(pSet=CCLE, 
-                                  mDataType="mutation", 
-                                  drugs=c("PD-0325901"), 
-                                  features="BRAF", 
-                                  sensitivity.measure="auc_published", 
-                                  molecular.summary.stat="and", 
-                                  sensitivity.summary.stat="median",
-                                  verbose=FALSE)
+                                                    mDataType="mutation", 
+                                                    drugs=c("PD-0325901"), 
+                                                    features="BRAF", 
+                                                    sensitivity.measure="auc_published", 
+                                                    molecular.summary.stat="and", 
+                                                    sensitivity.summary.stat="median",
+                                                    verbose=FALSE)
     gdsc.sig.mut <- drugSensitivitySig(pSet=GDSC, 
-                                  mDataType="mutation", 
-                                  drugs=c("PD-0325901"), 
-                                  features="BRAF", 
-                                  sensitivity.measure="auc_published", 
-                                  molecular.summary.stat="and", 
-                                  sensitivity.summary.stat="median",
-                                  verbose=FALSE)
+                                            mDataType="mutation", 
+                                            drugs=c("PD-0325901"), 
+                                            features="BRAF", 
+                                            sensitivity.measure="auc_published", 
+                                            molecular.summary.stat="and", 
+                                            sensitivity.summary.stat="median",
+                                            verbose=FALSE)
     ccle.sig <- rbind(ccle.sig.rna, ccle.sig.mut)
     gdsc.sig <- rbind(gdsc.sig.rna, gdsc.sig.mut)
     known.biomarkers <- cbind("GDSC effect size"=gdsc.sig[,1], 
@@ -146,11 +148,7 @@ Some of the widely used multivariate machine learning methods such as elastic ne
 
 
 ```{r machine_learning, results='hide'} 
-suppressPackageStartupMessages({
-  require(mRMRe) ||  install.packages("mRMRe")
-  require(caret) || install.packages("caret")
-  require(randomForest) || install.packages("randomForest")
-})
+
 ##Preparing trainig dataset
 train_expr <- t(exprs(PharmacoGx::summarizeMolecularProfiles(GDSC, mDataType="rna", fill.missing=FALSE, verbose=FALSE)))
 aac <- PharmacoGx::summarizeSensitivityProfiles(GDSC, sensitivity.measure="auc_recomputed", drug="lapatinib", fill.missing=FALSE, verbose=FALSE)
@@ -183,6 +181,55 @@ for(method in c("ridge", "lasso", "random_forest", "svm")){
 }
 ```
 
+### Bonus: Using the Connectivity Map for drug repurposing
+
+We show here how to use *PharmacoGx* for linking drug perturbation signatures inferred from CMAP to independent signatures of HDAC inhibitors published in Glaser et al. (2003). We therefore sought to reproduce the HDAC analysis in Lamb et al. (2006) using the latest version of CMAP that can be downloaded using downloadPSet. The connectivityScore function enables the computation of the connectivity scores between the 14-gene HDAC signature from (Glaser et al., 2003) and over 1000 CMAP drugs. This analysis results in the four HDAC inhibitors in CMAP being ranked at the top of the drug list (Fig. 2), therefore concurring with the original CMAP analysis (Lamb et al., 2006).
+ 
+```{r runCMAP, message=FALSE, warning=FALSE}
+## download and process the HDAC signature
+mydir <- "1132939s"
+downloader::download(paste("http://www.sciencemag.org/content/suppl/2006/09/29/313.5795.1929.DC1/", mydir, ".zip", sep=""), destfile=paste(mydir,".zip",sep=""))
+unzip(paste(mydir,".zip", sep=""))
+
+HDAC_up <- gdata::read.xls(paste(mydir, paste(mydir, "sigS1.xls", sep="_"),sep="/"), sheet=1, header=FALSE, as.is=TRUE)
+HDAC_down <- gdata::read.xls(paste(mydir, paste(mydir, "sigS1.xls", sep="_"),sep="/"), sheet=2, header=FALSE, as.is=TRUE)
+HDAC <- as.data.frame(matrix(NA, nrow=nrow(HDAC_down)+nrow(HDAC_up), ncol=2))
+annot <- AnnotationDbi::select(hgu133a.db, keys = c(HDAC_up[[1]], HDAC_down[[1]]), columns=c("ENSEMBL"), keytype="PROBEID")
+gene_up <- unique(annot[match(HDAC_up[[1]], annot[,1]),2])
+gene_down <- na.omit(unique(annot[match(HDAC_down[[1]], annot[,1]),2]))
+HDAC_genes <- as.data.frame(matrix(NA, nrow=length(gene_down)+length(gene_up), ncol=2))
+
+
+HDAC_genes[ , 2] <- c(rep(1, times=length(gene_up)), rep(-1, times=length(gene_down)))
+HDAC_genes[ , 1] <- c(gene_up, gene_down)
+rownames(HDAC_genes) <- HDAC_genes[ , 1]
+HDAC <- HDAC_genes[ , 2]
+names(HDAC) <- rownames(HDAC_genes)
+
+drug.perturbation <- PharmacoGx::downloadPertSig("CMAP")
+dimnames(drug.perturbation)[[1]] <- gsub("_at", "", dimnames(drug.perturbation)[[1]])
+
+message("Be aware that computing sensitivity will take some time...")
+cl <- parallel::makeCluster(2)
+res <- parApply(drug.perturbation[ , , c("tstat", "fdr")], 2, function(x, HDAC){ 
+	return(PharmacoGx::connectivityScore(x=x, y=HDAC, method="gsea", nperm=100))
+}, cl=cl, HDAC=HDAC)
+stopCluster(cl)
+rownames(res) <- c("Connectivity", "P Value")
+res <- t(res)
+
+
+res <- apply(drug.perturbation[ , , c("tstat", "fdr")], 2, function(x, HDAC){ 
+	return(PharmacoGx::connectivityScore(x=x, y=HDAC, method="gsea", nperm=100))
+}, HDAC=HDAC)
+rownames(res) <- c("Connectivity", "P Value")
+res <- t(res)
+
+
+HDAC_inhibitors <- c("vorinostat", "trichostatin A", "HC toxin", "valproic acid")
+res <- res[order(res[,1], decreasing=T), ]
+HDAC_ranks <- which(rownames(res) %in% HDAC_inhibitors)
+```
 
 ## Session Info
 
