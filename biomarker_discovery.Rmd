@@ -20,7 +20,7 @@ suppressPackageStartupMessages({
   require(mRMRe) ||  install.packages("mRMRe")
   require(caret) || install.packages("caret")
   require(randomForest) || install.packages("randomForest")
-  require("hgu133a.db") || BiocManager::install("hgu133a.db")
+  require("hgu133a.db") || BiocManager::install("hgu133a.db")})
 ```
 
 ### Downloading PharmacoSet objects
