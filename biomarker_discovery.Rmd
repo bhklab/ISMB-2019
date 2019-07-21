@@ -100,7 +100,7 @@ As an example of the reproducibility of biomarker discovery across pharmacogenom
                                                     molecular.summary.stat="and", 
                                                     sensitivity.summary.stat="median",
                                                     verbose=FALSE)
-    gdsc.sig.mut <- drugSensitivitySig(pSet=GDSC, 
+    gdsc.sig.mut <- PharmacoGx::drugSensitivitySig(pSet=GDSC, 
                                             mDataType="mutation", 
                                             drugs=c("PD-0325901"), 
                                             features="BRAF", 
@@ -196,8 +196,9 @@ HDAC_down <- gdata::read.xls(paste(mydir, paste(mydir, "sigS1.xls", sep="_"),sep
 HDAC <- as.data.frame(matrix(NA, nrow=nrow(HDAC_down)+nrow(HDAC_up), ncol=2))
 annot <- AnnotationDbi::select(hgu133a.db, keys = c(HDAC_up[[1]], HDAC_down[[1]]), columns=c("ENSEMBL"), keytype="PROBEID")
 gene_up <- unique(annot[match(HDAC_up[[1]], annot[,1]),2])
-gene_down <- na.omit(unique(annot[match(HDAC_down[[1]], annot[,1]),2]))
-HDAC_genes <- as.data.frame(matrix(NA, nrow=length(gene_down)+length(gene_up), ncol=2))
+gene_down <- unique(annot[match(HDAC_down[[1]], annot[,1]),2])
+gene_down <- gene_down[which(!is.na(gene_down))]
+HDAC_genes <- DataFrame(matrix(NA, nrow=length(gene_down)+length(gene_up), ncol=2))
 
 
 HDAC_genes[ , 2] <- c(rep(1, times=length(gene_up)), rep(-1, times=length(gene_down)))
