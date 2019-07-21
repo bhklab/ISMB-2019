@@ -156,7 +156,7 @@ In the example below we compute the angle between treatment and control PDXs
 
 ```{r response1}
 data("repdx")
-response(repdx, batch="P1", res.measure="angle")
+Xeva::response(repdx, batch="P1", res.measure="angle")
 ```
 
 
@@ -169,7 +169,7 @@ and slope of the PDXs for the drug `tamoxifen` using linear regression (lm).
 
 ```{r biomarker1}
 data(brca)
-drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
+Xeva::drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
                    features=c(1,2,3,4,5), sensitivity.measure="slope", fit="lm")
 ```
 
@@ -183,7 +183,7 @@ For example, below we use *best.average.response* as
 the PDX's response matrix in the association analysis:
 ```{r biomarker2}
 data(brca)
-drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
+Xeva::drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
                    features=c(1,2,3,4,5),
                    sensitivity.measure="best.average.response", fit = "lm")
 ```
@@ -195,7 +195,7 @@ correlation) by setting the parameter *fit*.
 
 ```{r biomarker3, warning=FALSE}
 data(brca)
-drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
+Xeva::drugSensitivitySig(object=brca, drug="tamoxifen", mDataType="RNASeq",
                    features=c(1,2,3,4,5),
-                   sensitivity.measure="best.average.response", fit="pearson")
+                   sensitivity.measure="best.average.response", fit="spearman")
 ```
