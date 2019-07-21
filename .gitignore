@@ -4,3 +4,4 @@ PSets/
 .RData
 .Ruserdata
 *.Rproj
+.DS_Store
